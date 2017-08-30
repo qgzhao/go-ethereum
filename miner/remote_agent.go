@@ -141,7 +141,7 @@ func (a *RemoteAgent) SubmitWork(nonce types.BlockNonce, mixDigest, hash common.
 	// Make sure the work submitted is present
 	work := a.work[hash]
 	if work == nil {
-		log.Info("Work submitted but none pending", "hash", hash)
+		log.Info("工作已提交但没保留处理", "hash", hash)
 		return false
 	}
 	// Make sure the Engine solutions is indeed valid
@@ -150,7 +150,7 @@ func (a *RemoteAgent) SubmitWork(nonce types.BlockNonce, mixDigest, hash common.
 	result.MixDigest = mixDigest
 
 	if err := a.engine.VerifySeal(a.chain, result); err != nil {
-		log.Warn("Invalid proof-of-work submitted", "hash", hash, "err", err)
+		log.Warn("无效的POW提交", "hash", hash, "err", err)
 		return false
 	}
 	block := work.Block.WithSeal(result)
@@ -169,8 +169,7 @@ func (a *RemoteAgent) SubmitWork(nonce types.BlockNonce, mixDigest, hash common.
 // RemoteAgent.Start() constantly recreates these channels, so the loop code cannot
 // assume data stability in these member fields.
 func (a *RemoteAgent) loop(workCh chan *Work, quitCh chan struct{}) {
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	ticker := time.Tick(5 * time.Second)
 
 	for {
 		select {
@@ -180,7 +179,7 @@ func (a *RemoteAgent) loop(workCh chan *Work, quitCh chan struct{}) {
 			a.mu.Lock()
 			a.currentWork = work
 			a.mu.Unlock()
-		case <-ticker.C:
+		case <-ticker:
 			// cleanup
 			a.mu.Lock()
 			for hash, work := range a.work {

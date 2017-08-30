@@ -81,7 +81,7 @@ func (journal *txJournal) load(add func(*types.Transaction) error) error {
 			continue
 		}
 	}
-	log.Info("Loaded local transaction journal", "transactions", total, "dropped", dropped)
+	log.Info("加载本地交易日志", "transactions", total, "dropped", dropped)
 
 	return failure
 }
@@ -133,7 +133,7 @@ func (journal *txJournal) rotate(all map[common.Address]types.Transactions) erro
 		return err
 	}
 	journal.writer = sink
-	log.Info("Regenerated local transaction journal", "transactions", journaled, "accounts", len(all))
+	log.Info("重新生成本地交易日志", "transactions", journaled, "accounts", len(all))
 
 	return nil
 }

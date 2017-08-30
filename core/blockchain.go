@@ -226,9 +226,9 @@ func (bc *BlockChain) loadLastState() error {
 	blockTd := bc.GetTd(bc.currentBlock.Hash(), bc.currentBlock.NumberU64())
 	fastTd := bc.GetTd(bc.currentFastBlock.Hash(), bc.currentFastBlock.NumberU64())
 
-	log.Info("Loaded most recent local header", "number", currentHeader.Number, "hash", currentHeader.Hash(), "td", headerTd)
-	log.Info("Loaded most recent local full block", "number", bc.currentBlock.Number(), "hash", bc.currentBlock.Hash(), "td", blockTd)
-	log.Info("Loaded most recent local fast block", "number", bc.currentFastBlock.Number(), "hash", bc.currentFastBlock.Hash(), "td", fastTd)
+	log.Info("加载最近的本地区块头", "number", currentHeader.Number, "hash", currentHeader.Hash(), "td", headerTd)
+	log.Info("加载最近的本地完全区块", "number", bc.currentBlock.Number(), "hash", bc.currentBlock.Hash(), "td", blockTd)
+	log.Info("加载最近的本地快速区块", "number", bc.currentFastBlock.Number(), "hash", bc.currentFastBlock.Hash(), "td", fastTd)
 
 	return nil
 }
@@ -814,7 +814,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 
 	// Report some public statistics so the user has a clue what's going on
 	last := blockChain[len(blockChain)-1]
-	log.Info("Imported new block receipts", "count", stats.processed, "elapsed", common.PrettyDuration(time.Since(start)),
+	log.Info("导入新区块收据", "count", stats.processed, "elapsed", common.PrettyDuration(time.Since(start)),
 		"number", last.Number(), "hash", last.Hash(), "ignored", stats.ignored)
 
 	return 0, nil
@@ -1069,9 +1069,9 @@ func (st *insertStats) report(chain []*types.Block, index int) {
 			txs = countTransactions(chain[st.lastIndex : index+1])
 		)
 		context := []interface{}{
-			"blocks", st.processed, "txs", txs, "mgas", float64(st.usedGas) / 1000000,
-			"elapsed", common.PrettyDuration(elapsed), "mgasps", float64(st.usedGas) * 1000 / float64(elapsed),
-			"number", end.Number(), "hash", end.Hash(),
+			"区块数", st.processed, "交易数", txs, "已耗燃料", float64(st.usedGas) / 1000000,
+			"已耗时间", common.PrettyDuration(elapsed), "每秒消耗燃料", float64(st.usedGas) * 1000 / float64(elapsed),
+			"已耗时间", end.Number(), "哈希值", end.Hash(),
 		}
 		if st.queued > 0 {
 			context = append(context, []interface{}{"queued", st.queued}...)
@@ -1079,7 +1079,7 @@ func (st *insertStats) report(chain []*types.Block, index int) {
 		if st.ignored > 0 {
 			context = append(context, []interface{}{"ignored", st.ignored}...)
 		}
-		log.Info("Imported new chain segment", context...)
+		log.Info("导入新的区块段", context...)
 
 		*st = insertStats{startTime: now, lastIndex: index + 1}
 	}

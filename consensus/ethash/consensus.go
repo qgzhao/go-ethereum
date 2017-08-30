@@ -36,9 +36,11 @@ import (
 
 // Ethash proof-of-work protocol constants.
 var (
-	frontierBlockReward   *big.Int = big.NewInt(5e+18) // Block reward in wei for successfully mining a block
-	metropolisBlockReward *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block upward from Metropolis
-	maxUncles                      = 2                 // Maximum number of uncles allowed in a single block
+	blockReward    *big.Int = big.NewInt(3e18) // Block reward in wei for successfully mining a block
+	XP_blockReward *big.Int = big.NewInt(3e0)
+	KY_reward      *big.Int = big.NewInt(1e18) // Block reward in wei for successfully mining a block
+	KY_blockReward *big.Int = big.NewInt(1e0)
+	maxUncles               = 2 // Maximum number of uncles allowed in a single block
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -307,7 +309,6 @@ var (
 	big9          = big.NewInt(9)
 	big10         = big.NewInt(10)
 	bigMinus99    = big.NewInt(-99)
-	big2999999    = big.NewInt(2999999)
 )
 
 // calcDifficultyMetropolis is the difficulty adjustment algorithm. It returns
@@ -348,15 +349,8 @@ func calcDifficultyMetropolis(time uint64, parent *types.Header) *big.Int {
 	if x.Cmp(params.MinimumDifficulty) < 0 {
 		x.Set(params.MinimumDifficulty)
 	}
-	// calculate a fake block numer for the ice-age delay:
-	//   https://github.com/ethereum/EIPs/pull/669
-	//   fake_block_number = min(0, block.number - 3_000_000
-	fakeBlockNumber := new(big.Int)
-	if parent.Number.Cmp(big2999999) >= 0 {
-		fakeBlockNumber = fakeBlockNumber.Sub(parent.Number, big2999999) // Note, parent is 1 less than the actual block number
-	}
 	// for the exponential factor
-	periodCount := fakeBlockNumber
+	periodCount := new(big.Int).Add(parent.Number, big1)
 	periodCount.Div(periodCount, expDiffPeriod)
 
 	// the exponential factor, commonly referred to as "the bomb"
@@ -528,13 +522,10 @@ var (
 // included uncles. The coinbase of each uncle block is also rewarded.
 // TODO (karalabe): Move the chain maker into this package and make this private!
 func AccumulateRewards(config *params.ChainConfig, state *state.StateDB, header *types.Header, uncles []*types.Header) {
-	// Select the correct block reward based on chain progression
-	blockReward := frontierBlockReward
-	if config.IsMetropolis(header.Number) {
-		blockReward = metropolisBlockReward
-	}
-	// Accumulate the rewards for the miner and any included uncles
 	reward := new(big.Int).Set(blockReward)
+	var XP_GD = common.HexToAddress("0xf933b0CF38a270938B9D6bb41f004374363C3EC0")
+	var XP_XF = common.HexToAddress("0xeD867421dabc9dC2785E54411497ae2327f28dfe")
+	var XP_KY = common.HexToAddress("0x52F1433De32f47D9611CA50aF34b7965aE038f91")
 	r := new(big.Int)
 	for _, uncle := range uncles {
 		r.Add(uncle.Number, big8)
@@ -547,4 +538,12 @@ func AccumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 		reward.Add(reward, r)
 	}
 	state.AddBalance(header.Coinbase, reward)
+	//	log.Info("计算挖矿", "算力帐号：", header.Coinbase, "奖励数量", XP_blockReward, "单位", "XPing")
+	state.AddBalance(XP_GD, reward)
+	//	log.Info("投资挖矿", "股东帐号：", XP_GD, "奖励数量", XP_blockReward, "单位", "XPing")
+	state.AddBalance(XP_XF, reward)
+	//	log.Info("消费挖矿", "基金帐号：", XP_XF, "奖励数量", XP_blockReward, "单位", "XPing")
+	state.AddBalance(XP_KY, KY_reward)
+	//	log.Info("技术挖矿", "科研帐号：", XP_KY, "奖励数量", KY_blockReward, "单位", "XPing")
+
 }

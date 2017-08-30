@@ -378,7 +378,7 @@ func (pool *TxPool) Stop() {
 	if pool.journal != nil {
 		pool.journal.close()
 	}
-	log.Info("Transaction pool stopped")
+	log.Info("交易池停止运行")
 }
 
 // SubscribeTxPreEvent registers a subscription of TxPreEvent and
@@ -405,7 +405,7 @@ func (pool *TxPool) SetGasPrice(price *big.Int) {
 	for _, tx := range pool.priced.Cap(price, pool.locals) {
 		pool.removeTx(tx.Hash())
 	}
-	log.Info("Transaction pool price threshold updated", "price", price)
+	log.Info("交易池价格限值更新", "价格", price)
 }
 
 // State returns the virtual managed state of the transaction pool.

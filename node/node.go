@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -33,7 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/prometheus/prometheus/util/flock"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 )
 
 // Node is a container on which services can be registered.
@@ -42,8 +43,8 @@ type Node struct {
 	config   *Config
 	accman   *accounts.Manager
 
-	ephemeralKeystore string         // if non-empty, the key directory that will be removed by Stop
-	instanceDirLock   flock.Releaser // prevents concurrent use of instance directory
+	ephemeralKeystore string          // if non-empty, the key directory that will be removed by Stop
+	instanceDirLock   storage.Storage // prevents concurrent use of instance directory
 
 	serverConfig p2p.Config
 	server       *p2p.Server // Currently running P2P networking layer
@@ -143,6 +144,7 @@ func (n *Node) Start() error {
 
 	// Initialize the p2p server. This creates the node key and
 	// discovery databases.
+	//log.Warn("here the node begin to start!")
 	n.serverConfig = n.config.P2P
 	n.serverConfig.PrivateKey = n.config.NodeKey()
 	n.serverConfig.Name = n.config.NodeName()
@@ -156,7 +158,7 @@ func (n *Node) Start() error {
 		n.serverConfig.NodeDatabase = n.config.NodeDB()
 	}
 	running := &p2p.Server{Config: n.serverConfig}
-	log.Info("Starting peer-to-peer node", "instance", n.serverConfig.Name)
+	log.Info("欢迎进入消品链网络", "instance", n.serverConfig.Name)
 
 	// Otherwise copy and specialize the P2P configuration
 	services := make(map[reflect.Type]Service)
@@ -172,6 +174,8 @@ func (n *Node) Start() error {
 			ctx.services[kind] = s
 		}
 		// Construct and save the service
+		//log.Warn("这里一个设置断点！111111111")
+
 		service, err := constructor(ctx)
 		if err != nil {
 			return err
@@ -182,13 +186,20 @@ func (n *Node) Start() error {
 		}
 		services[kind] = service
 	}
+	//log.Warn("这里一个设置断点！@@@@@@@@@@")
+
 	// Gather the protocols and start the freshly assembled P2P server
 	for _, service := range services {
 		running.Protocols = append(running.Protocols, service.Protocols()...)
 	}
 	if err := running.Start(); err != nil {
-		return convertFileLockError(err)
+		if errno, ok := err.(syscall.Errno); ok && datadirInUseErrnos[uint(errno)] {
+			return ErrDatadirUsed
+		}
+		return err
 	}
+
+	//log.Warn("这里一个设置断点！2222222222222")
 	// Start each of the services
 	started := []reflect.Type{}
 	for kind, service := range services {
@@ -204,6 +215,7 @@ func (n *Node) Start() error {
 		// Mark the service started for potential cleanup
 		started = append(started, kind)
 	}
+	//log.Warn("这里一个设置断点！3333333")
 	// Lastly start the configured RPC interfaces
 	if err := n.startRPC(services); err != nil {
 		for _, service := range services {
@@ -216,7 +228,7 @@ func (n *Node) Start() error {
 	n.services = services
 	n.server = running
 	n.stop = make(chan struct{})
-
+	log.Warn("销品链网络初始化完成!")
 	return nil
 }
 
@@ -229,13 +241,14 @@ func (n *Node) openDataDir() error {
 	if err := os.MkdirAll(instdir, 0700); err != nil {
 		return err
 	}
-	// Lock the instance directory to prevent concurrent use by another instance as well as
-	// accidental use of the instance directory as a database.
-	release, _, err := flock.New(filepath.Join(instdir, "LOCK"))
+	// Try to open the instance directory as LevelDB storage. This creates a lock file
+	// which prevents concurrent use by another instance as well as accidental use of the
+	// instance directory as a database.
+	storage, err := storage.OpenFile(instdir, true)
 	if err != nil {
-		return convertFileLockError(err)
+		return err
 	}
-	n.instanceDirLock = release
+	n.instanceDirLock = storage
 	return nil
 }
 
@@ -317,7 +330,7 @@ func (n *Node) startIPC(apis []rpc.API) error {
 		return err
 	}
 	go func() {
-		log.Info(fmt.Sprintf("IPC endpoint opened: %s", n.ipcEndpoint))
+		log.Info(fmt.Sprintf("IPC终端服务启动: %s", n.ipcEndpoint))
 
 		for {
 			conn, err := listener.Accept()
@@ -349,7 +362,7 @@ func (n *Node) stopIPC() {
 		n.ipcListener.Close()
 		n.ipcListener = nil
 
-		log.Info(fmt.Sprintf("IPC endpoint closed: %s", n.ipcEndpoint))
+		log.Info(fmt.Sprintf("IPC终端服务关闭: %s", n.ipcEndpoint))
 	}
 	if n.ipcHandler != nil {
 		n.ipcHandler.Stop()
@@ -387,7 +400,7 @@ func (n *Node) startHTTP(endpoint string, apis []rpc.API, modules []string, cors
 		return err
 	}
 	go rpc.NewHTTPServer(cors, handler).Serve(listener)
-	log.Info(fmt.Sprintf("HTTP endpoint opened: http://%s", endpoint))
+	log.Info(fmt.Sprintf("HTTP终端服务启动: http://%s", endpoint))
 
 	// All listeners booted successfully
 	n.httpEndpoint = endpoint
@@ -403,7 +416,7 @@ func (n *Node) stopHTTP() {
 		n.httpListener.Close()
 		n.httpListener = nil
 
-		log.Info(fmt.Sprintf("HTTP endpoint closed: http://%s", n.httpEndpoint))
+		log.Info(fmt.Sprintf("HTTP终端服务关闭: http://%s", n.httpEndpoint))
 	}
 	if n.httpHandler != nil {
 		n.httpHandler.Stop()
@@ -495,9 +508,7 @@ func (n *Node) Stop() error {
 
 	// Release instance directory lock.
 	if n.instanceDirLock != nil {
-		if err := n.instanceDirLock.Release(); err != nil {
-			log.Error("Can't release datadir lock", "err", err)
-		}
+		n.instanceDirLock.Close()
 		n.instanceDirLock = nil
 	}
 
@@ -626,8 +637,10 @@ func (n *Node) EventMux() *event.TypeMux {
 // ephemeral, a memory database is returned.
 func (n *Node) OpenDatabase(name string, cache, handles int) (ethdb.Database, error) {
 	if n.config.DataDir == "" {
+
 		return ethdb.NewMemDatabase()
 	}
+	log.Warn("Here we are in node and creat NewDBdatabase")
 	return ethdb.NewLDBDatabase(n.config.resolvePath(name), cache, handles)
 }
 

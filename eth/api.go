@@ -454,7 +454,7 @@ func (api *PrivateDebugAPI) traceBlock(block *types.Block, logConfig *vm.LogConf
 	if err != nil {
 		return false, structLogger.StructLogs(), err
 	}
-
+	log.Warn("Here WE are in The TraceBlock and use processor.process")
 	receipts, _, usedGas, err := processor.Process(block, statedb, config)
 	if err != nil {
 		return false, structLogger.StructLogs(), err
@@ -464,6 +464,26 @@ func (api *PrivateDebugAPI) traceBlock(block *types.Block, logConfig *vm.LogConf
 	}
 	return true, structLogger.StructLogs(), nil
 }
+
+// callmsg is the message type used for call transitions.
+type callmsg struct {
+	addr          common.Address
+	to            *common.Address
+	gas, gasPrice *big.Int
+	value         *big.Int
+	data          []byte
+}
+
+// accessor boilerplate to implement core.Message
+func (m callmsg) From() (common.Address, error)         { return m.addr, nil }
+func (m callmsg) FromFrontier() (common.Address, error) { return m.addr, nil }
+func (m callmsg) Nonce() uint64                         { return 0 }
+func (m callmsg) CheckNonce() bool                      { return false }
+func (m callmsg) To() *common.Address                   { return m.to }
+func (m callmsg) GasPrice() *big.Int                    { return m.gasPrice }
+func (m callmsg) Gas() *big.Int                         { return m.gas }
+func (m callmsg) Value() *big.Int                       { return m.value }
+func (m callmsg) Data() []byte                          { return m.data }
 
 // formatError formats a Go error into either an empty string or the data content
 // of the error itself.
@@ -523,7 +543,6 @@ func (api *PrivateDebugAPI) TraceTransaction(ctx context.Context, txHash common.
 
 	// Run the transaction with tracing enabled.
 	vmenv := vm.NewEVM(context, statedb, api.config, vm.Config{Debug: true, Tracer: tracer})
-	// TODO utilize failed flag
 	ret, gas, _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas()))
 	if err != nil {
 		return nil, fmt.Errorf("tracing failed: %v", err)

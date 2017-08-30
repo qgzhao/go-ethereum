@@ -108,7 +108,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig)
+	log.Info("初始化消品链配置", "config", chainConfig)
 
 	eth := &Ethereum{
 		chainDb:        chainDb,
@@ -126,7 +126,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 	if err := addMipmapBloomBins(chainDb); err != nil {
 		return nil, err
 	}
-	log.Info("Initialising Ethereum protocol", "versions", ProtocolVersions, "network", config.NetworkId)
+	log.Info("初始化以太坊协议", "版本", ProtocolVersions, "网络", config.NetworkId)
 
 	if !config.SkipBcVersionCheck {
 		bcVersion := core.GetBlockChainVersion(chainDb)
@@ -168,9 +168,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
+	//log.Warn("Here we creat a Ethereum and a new Miner")
 	eth.miner = miner.New(eth, eth.chainConfig, eth.EventMux(), eth.engine)
+	//log.Info("Eth", eth, "chainConfig", eth.chainConfig, "eth.EventMux", eth.EventMux(), "eth.engine", eth.engine)
 	eth.miner.SetExtra(makeExtraData(config.ExtraData))
-
+	//log.Info("Config.ExtraData", config.ExtraData)
 	eth.ApiBackend = &EthApiBackend{eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {

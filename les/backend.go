@@ -70,7 +70,8 @@ type LightEthereum struct {
 	networkId     uint64
 	netRPCService *ethapi.PublicNetAPI
 
-	wg sync.WaitGroup
+	quitSync chan struct{}
+	wg       sync.WaitGroup
 }
 
 func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
@@ -82,7 +83,7 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*LightEthereum, error) {
 	if _, isCompat := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !isCompat {
 		return nil, genesisErr
 	}
-	log.Info("Initialised chain configuration", "config", chainConfig)
+	log.Info("初始化消品链配置", "config", chainConfig)
 
 	peers := newPeerSet()
 	quitSync := make(chan struct{})

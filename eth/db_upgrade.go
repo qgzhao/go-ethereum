@@ -46,7 +46,7 @@ func upgradeDeduplicateData(db ethdb.Database) func() error {
 		return nil
 	}
 	// Start the deduplication upgrade on a new goroutine
-	log.Warn("Upgrading database to use lookup entries")
+	log.Warn("使用记录搜索更新数据库")
 	stop := make(chan chan error)
 
 	go func() {
@@ -116,10 +116,10 @@ func upgradeDeduplicateData(db ethdb.Database) func() error {
 		}
 		// Upgrade finished, mark a such and terminate
 		if failed == nil {
-			log.Info("Database deduplication successful", "deduped", converted)
+			log.Info("数据库的重复数据删除成功", "deduped", converted)
 			db.Put(deduplicateData, []byte{42})
 		} else {
-			log.Error("Database deduplication failed", "deduped", converted, "err", failed)
+			log.Error("数据库的重复数据删除失败", "deduped", converted, "err", failed)
 		}
 		it.Release()
 		it = nil
@@ -166,14 +166,14 @@ func addMipmapBloomBins(db ethdb.Database) (err error) {
 	}
 
 	tstart := time.Now()
-	log.Warn("Upgrading db log bloom bins")
+	log.Warn("更新数据库日志")
 	for i := uint64(0); i <= latestBlock.NumberU64(); i++ {
 		hash := core.GetCanonicalHash(db, i)
 		if (hash == common.Hash{}) {
-			return fmt.Errorf("chain db corrupted. Could not find block %d.", i)
+			return fmt.Errorf("区块链数据库冲突，不能找到区块 %d.", i)
 		}
 		core.WriteMipmapBloom(db, i, core.GetBlockReceipts(db, hash, i))
 	}
-	log.Info("Bloom-bin upgrade completed", "elapsed", common.PrettyDuration(time.Since(tstart)))
+	log.Info("升级完成", "elapsed", common.PrettyDuration(time.Since(tstart)))
 	return nil
 }
