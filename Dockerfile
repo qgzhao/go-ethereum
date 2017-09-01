@@ -8,6 +8,6 @@ RUN \
   apk del git go make gcc musl-dev linux-headers            && \
   rm -rf /go-ethereum
 
-EXPOSE 9545 30333 30333/udp
+EXPOSE 8545 30303 30303/udp
 
 ENTRYPOINT ["geth"]
